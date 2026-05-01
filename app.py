@@ -39,16 +39,16 @@ def check_phishing_rules(text):
     return min(score, 1)
 
 # -------------------------------
-# ✅ FIXED Feature extraction (6 features)
+# Feature extraction (6 features)
 # -------------------------------
 def extract_features(text):
     return [
-        len(text),                          # 1
-        text.count("http"),                # 2
-        text.count("!"),                   # 3
-        text.count("@"),                   # 4
-        text.count("https"),               # 5
-        sum(word in text.lower() for word in ["urgent", "verify", "password"])  # 6
+        len(text),
+        text.count("http"),
+        text.count("!"),
+        text.count("@"),
+        text.count("https"),
+        sum(word in text.lower() for word in ["urgent", "verify", "password"])
     ]
 
 # -------------------------------
@@ -105,7 +105,7 @@ def index():
 
     if request.method == "POST":
 
-        # Input handling
+        # Input
         if "file" in request.files and request.files["file"].filename != "":
             file = request.files["file"]
 
@@ -127,8 +127,12 @@ def index():
         # Rule score
         rule_score = check_phishing_rules(text)
 
-        # Hybrid score
-        score = (rule_score * 0.4) + (ml_prediction * 0.6)
+        # 🔥 STRONG RULE OVERRIDE
+        if "password" in text.lower() and "http" in text:
+            score = 1
+        else:
+            # 🔥 Improved weighting
+            score = (rule_score * 0.7) + (ml_prediction * 0.3)
 
         # Result
         if score > 0.5:
@@ -150,11 +154,14 @@ def index():
         if "password" in text.lower():
             reasons.append("asks for sensitive information")
 
-        # AI Explanation
+        # AI explanation
         explanation = generate_ai_explanation(reasons, result)
 
-    return render_template("index.html", result=result, score=score,
-                           reasons=reasons, explanation=explanation)
+    return render_template("index.html",
+                           result=result,
+                           score=score,
+                           reasons=reasons,
+                           explanation=explanation)
 
 # -------------------------------
 # DASHBOARD
