@@ -9,23 +9,20 @@ from PyPDF2 import PdfReader
 
 app = Flask(__name__)
 
-# -------------------------------
 # Load ML model
-# -------------------------------
 model = pickle.load(open("phishing_model.pkl", "rb"))
 
-# -------------------------------
 # Dashboard counters
-# -------------------------------
 total_checks = 0
 phishing_count = 0
 safe_count = 0
 
-# -------------------------------
-# Google Safe Browsing API
-# -------------------------------
+# API Key (replace this)
 API_KEY = "YOUR_API_KEY_HERE"
 
+# -------------------------------
+# URL Safety Check
+# -------------------------------
 def check_url_safety(url):
     endpoint = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={API_KEY}"
 
@@ -111,6 +108,23 @@ def extract_pdf_text(file):
     return text
 
 # -------------------------------
+# AI Explanation
+# -------------------------------
+def generate_ai_explanation(reasons, result):
+    if not reasons:
+        return "This email appears safe with no strong phishing indicators."
+
+    explanation = "This email appears to be "
+
+    if "Phishing" in result:
+        explanation += "a phishing attempt because it "
+    else:
+        explanation += "safe, but it contains some minor indicators like "
+
+    explanation += ", ".join(reasons).lower() + "."
+    return explanation
+
+# -------------------------------
 # MAIN ROUTE
 # -------------------------------
 @app.route("/", methods=["GET", "POST"])
@@ -120,6 +134,7 @@ def index():
     result = None
     score = 0
     reasons = []
+    explanation = ""
 
     if request.method == "POST":
 
@@ -145,10 +160,10 @@ def index():
         # Rule score
         rule_score = check_phishing_rules(email_text)
 
-        # Hybrid
+        # Hybrid score
         score = (rule_score * 0.4) + (ml_prediction * 0.6)
 
-        # URL safety check
+        # URL safety
         urls = extract_urls(email_text)
         for url in urls:
             if check_url_safety(url):
@@ -167,15 +182,18 @@ def index():
 
         # Reasons
         if "urgent" in email_text.lower():
-            reasons.append("Contains urgent words")
+            reasons.append("contains urgent words")
 
         if "http" in email_text:
-            reasons.append("Contains suspicious link")
+            reasons.append("contains suspicious link")
 
         if "password" in email_text.lower():
-            reasons.append("Asks for sensitive information")
+            reasons.append("asks for sensitive information")
 
-    return render_template("index.html", result=result, score=score, reasons=reasons)
+        # AI explanation
+        explanation = generate_ai_explanation(reasons, result)
+
+    return render_template("index.html", result=result, score=score, reasons=reasons, explanation=explanation)
 
 # -------------------------------
 # DASHBOARD
