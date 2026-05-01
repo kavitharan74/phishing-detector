@@ -6,12 +6,39 @@
 
 <style>
 body {
-    background: linear-gradient(to right, #141e30, #243b55);
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
     color: white;
+    font-family: Arial;
 }
 
-.card {
+.glass {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    padding: 30px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+textarea, input {
+    border-radius: 10px !important;
+}
+
+button {
+    transition: 0.3s;
+}
+
+button:hover {
+    transform: scale(1.05);
+}
+
+.progress {
+    height: 25px;
     border-radius: 15px;
+}
+
+.badge-box {
+    font-size: 18px;
+    padding: 8px 15px;
 }
 
 .spinner {
@@ -24,48 +51,64 @@ body {
 
 <div class="container mt-5">
 
-<div class="card p-4 shadow-lg bg-dark">
+<div class="glass">
 
-<h2 class="text-center mb-4">📧 Phishing Email Detector</h2>
+<h2 class="text-center mb-4">📧 Phishing Detector</h2>
 
 <form method="POST" enctype="multipart/form-data" onsubmit="showLoader()">
 
-<textarea name="email" class="form-control mb-3" rows="5" placeholder="Paste email content here..."></textarea>
+<textarea name="email" class="form-control mb-3" rows="5" placeholder="Paste email here..."></textarea>
 
 <input type="file" name="file" class="form-control mb-3">
 
-<button class="btn btn-primary w-100">🚀 Check Email</button>
+<button class="btn btn-primary w-100">🚀 Analyze Email</button>
 
 </form>
 
-<!-- Spinner -->
+<!-- Loader -->
 <div class="text-center mt-3 spinner" id="loader">
 <div class="spinner-border text-light"></div>
-<p>Analyzing email...</p>
+<p>Scanning for threats...</p>
 </div>
 
-<a href="/dashboard" class="btn btn-warning mt-3 w-100">📊 View Dashboard</a>
+<a href="/dashboard" class="btn btn-warning mt-3 w-100">📊 Dashboard</a>
 
 {% if result %}
-<div class="mt-4 p-4 bg-secondary rounded">
+<div class="mt-4">
 
-<h4>Result: {{ result }}</h4>
+<!-- Result badge -->
+<div class="text-center mb-3">
+<span class="badge 
+{% if score > 0.5 %}bg-danger{% else %}bg-success{% endif %} 
+badge-box">
+{{ result }}
+</span>
+</div>
 
+<!-- Progress -->
 <div class="progress mb-3">
-<div class="progress-bar {% if score > 0.5 %}bg-danger{% else %}bg-success{% endif %}" 
+<div class="progress-bar 
+{% if score > 0.5 %}bg-danger{% else %}bg-success{% endif %}" 
 style="width: {{score*100}}%">
 {{ (score*100)|round(1) }}%
 </div>
 </div>
 
+<!-- Reasons -->
+<div class="glass mb-3">
+<h5>⚠️ Detection Reasons</h5>
 <ul>
 {% for r in reasons %}
 <li>{{ r }}</li>
 {% endfor %}
 </ul>
+</div>
 
-<h5 class="mt-3">🤖 AI Explanation:</h5>
+<!-- AI Explanation -->
+<div class="glass">
+<h5>🤖 AI Explanation</h5>
 <p>{{ explanation }}</p>
+</div>
 
 </div>
 {% endif %}
