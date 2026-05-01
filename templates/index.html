@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Phishing Detector</title>
+</head>
+<body style="font-family: Arial; padding: 40px;">
+
+    <h2>📧 Phishing Email Detector</h2>
+
+    <form method="POST">
+        <textarea name="email" rows="10" cols="50" placeholder="Paste email here..."></textarea><br><br>
+        <button type="submit">Check</button>
+    </form>
+
+    {% if result %}
+        <h3>Result: {{ result }}</h3>
+
+        <progress value="{{ score }}" max="1" style="width:300px;"></progress>
+
+        {% if score > 0.5 %}
+            <p style="color:red;">⚠️ Phishing</p>
+        {% else %}
+            <p style="color:green;">✅ Safe</p>
+        {% endif %}
+
+        <h4>Why?</h4>
+        <ul>
+            {% for r in reasons %}
+                <li>{{ r }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+</body>
+</html>
