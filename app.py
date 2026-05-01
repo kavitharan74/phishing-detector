@@ -3,7 +3,6 @@ import pickle
 import email
 from email import policy
 import os
-import requests
 import re
 from PyPDF2 import PdfReader
 
@@ -17,35 +16,6 @@ total_checks = 0
 phishing_count = 0
 safe_count = 0
 
-# API Key (replace this)
-API_KEY = "YOUR_API_KEY_HERE"
-
-# -------------------------------
-# URL Safety Check
-# -------------------------------
-def check_url_safety(url):
-    endpoint = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={API_KEY}"
-
-    payload = {
-        "client": {"clientId": "phishing-detector", "clientVersion": "1.0"},
-        "threatInfo": {
-            "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING"],
-            "platformTypes": ["ANY_PLATFORM"],
-            "threatEntryTypes": ["URL"],
-            "threatEntries": [{"url": url}]
-        }
-    }
-
-    try:
-        response = requests.post(endpoint, json=payload)
-        if response.status_code == 200:
-            if "matches" in response.json():
-                return True
-    except:
-        pass
-
-    return False
-
 # -------------------------------
 # Extract URLs
 # -------------------------------
@@ -55,28 +25,30 @@ def extract_urls(text):
 # -------------------------------
 # Rule-based detection
 # -------------------------------
-def check_phishing_rules(email_text):
+def check_phishing_rules(text):
     score = 0
     words = ["urgent", "verify", "password", "click", "bank"]
 
     for w in words:
-        if w in email_text.lower():
+        if w in text.lower():
             score += 0.2
 
-    if "http" in email_text:
+    if "http" in text:
         score += 0.3
 
     return min(score, 1)
 
 # -------------------------------
-# Feature extraction
+# ✅ FIXED Feature extraction (6 features)
 # -------------------------------
-def extract_features(email_text):
+def extract_features(text):
     return [
-        len(email_text),
-        email_text.count("http"),
-        email_text.count("!"),
-        sum(word in email_text.lower() for word in ["urgent", "verify", "password"])
+        len(text),                          # 1
+        text.count("http"),                # 2
+        text.count("!"),                   # 3
+        text.count("@"),                   # 4
+        text.count("https"),               # 5
+        sum(word in text.lower() for word in ["urgent", "verify", "password"])  # 6
     ]
 
 # -------------------------------
@@ -114,15 +86,10 @@ def generate_ai_explanation(reasons, result):
     if not reasons:
         return "This email appears safe with no strong phishing indicators."
 
-    explanation = "This email appears to be "
-
     if "Phishing" in result:
-        explanation += "a phishing attempt because it "
+        return "This email appears to be phishing because it " + ", ".join(reasons) + "."
     else:
-        explanation += "safe, but it contains some minor indicators like "
-
-    explanation += ", ".join(reasons).lower() + "."
-    return explanation
+        return "This email seems safe but has minor indicators like " + ", ".join(reasons) + "."
 
 # -------------------------------
 # MAIN ROUTE
@@ -143,32 +110,25 @@ def index():
             file = request.files["file"]
 
             if file.filename.endswith(".eml"):
-                email_text = extract_eml_text(file)
+                text = extract_eml_text(file)
 
             elif file.filename.endswith(".pdf"):
-                email_text = extract_pdf_text(file)
+                text = extract_pdf_text(file)
 
             else:
-                email_text = file.read().decode("utf-8", errors="ignore")
+                text = file.read().decode("utf-8", errors="ignore")
         else:
-            email_text = request.form.get("email", "")
+            text = request.form.get("email") or ""
 
         # ML prediction
-        features = extract_features(email_text)
+        features = extract_features(text)
         ml_prediction = model.predict([features])[0]
 
         # Rule score
-        rule_score = check_phishing_rules(email_text)
+        rule_score = check_phishing_rules(text)
 
         # Hybrid score
         score = (rule_score * 0.4) + (ml_prediction * 0.6)
-
-        # URL safety
-        urls = extract_urls(email_text)
-        for url in urls:
-            if check_url_safety(url):
-                reasons.append(f"Unsafe URL detected: {url}")
-                score += 0.3
 
         # Result
         if score > 0.5:
@@ -181,19 +141,20 @@ def index():
         total_checks += 1
 
         # Reasons
-        if "urgent" in email_text.lower():
+        if "urgent" in text.lower():
             reasons.append("contains urgent words")
 
-        if "http" in email_text:
+        if "http" in text:
             reasons.append("contains suspicious link")
 
-        if "password" in email_text.lower():
+        if "password" in text.lower():
             reasons.append("asks for sensitive information")
 
-        # AI explanation
+        # AI Explanation
         explanation = generate_ai_explanation(reasons, result)
 
-    return render_template("index.html", result=result, score=score, reasons=reasons, explanation=explanation)
+    return render_template("index.html", result=result, score=score,
+                           reasons=reasons, explanation=explanation)
 
 # -------------------------------
 # DASHBOARD
